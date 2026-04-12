@@ -36,14 +36,6 @@ Route::post('/admin/login', [ChatController::class, 'loginAdmin'])->name('admin.
 // ============ تسجيل الخروج ============
 Route::get('/logout', [ChatController::class, 'logout'])->name('logout');
 
-// ============ تسجيل الدخول عبر Google ============
-Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle'])->name('auth.google');
-Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback'])->name('auth.google.callback');
-
-// ============ إكمال التسجيل من Google ============
-Route::get('/complete-google-registration', [SocialiteController::class, 'showCompleteForm'])->name('complete.google.registration');
-Route::post('/complete-google-registration', [SocialiteController::class, 'storeGoogleUser'])->name('complete.google.registration.store');
-
 // 3. المسارات المحمية (لازم يكون مسجل دخول عشان يشوفها)
 Route::middleware(['check.session'])->group(function () {
 
@@ -68,7 +60,15 @@ Route::middleware(['check.session', 'check.admin'])->group(function () {
     Route::post('/admin/user/{user}/toggle-subscription', [AdminController::class, 'toggleSubscription'])->name('admin.user.toggleSubscription');
 });
 // أضف هذا السطر فقط مؤقتاً في آخر الملف
-Route::get('/fix-my-db', function () {
+Route::get('/debug-db', function () {
+    return [
+        'DB_HOST' => env('DB_HOST'),
+        'DB_DATABASE' => env('DB_DATABASE'),
+        'DB_USERNAME' => env('DB_USERNAME'),
+        'Connected' => \Illuminate\Support\Facades\DB::connection()->getDatabaseName()
+    ];
+});
+Route::get('/run-migrations-now', function () {
     \Illuminate\Support\Facades\Artisan::call('migrate --force');
-    return "الحمد لله، الداتابيز اتصلحت!";
+    return "تم بناء الجداول في قاعدة البيانات بنجاح!";
 });
