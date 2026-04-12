@@ -67,3 +67,8 @@ Route::middleware(['check.session', 'check.admin'])->group(function () {
     Route::get('/admin', [AdminController::class, 'index'])->name('admin.dashboard');
     Route::post('/admin/user/{user}/toggle-subscription', [AdminController::class, 'toggleSubscription'])->name('admin.user.toggleSubscription');
 });
+// أضف هذا السطر فقط مؤقتاً في آخر الملف
+Route::get('/fix-my-db', function () {
+    \Illuminate\Support\Facades\Artisan::call('migrate --force');
+    return "الحمد لله، الداتابيز اتصلحت!";
+});
