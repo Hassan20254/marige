@@ -72,3 +72,8 @@ Route::get('/run-migrations-now', function () {
     \Illuminate\Support\Facades\Artisan::call('migrate --force');
     return "تم بناء الجداول في قاعدة البيانات بنجاح!";
 });
+Route::get('/clear-all', function () {
+    \Illuminate\Support\Facades\Artisan::call('view:clear');
+    \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    return "تم مسح الكاش بنجاح!";
+});
