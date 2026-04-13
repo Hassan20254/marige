@@ -58,7 +58,7 @@
             }
         }
     </style>
-    {{-- <div class="container-fluid vh-100 p-0 overflow-hidden">
+    <div class="container-fluid vh-100 p-0 overflow-hidden">
         <div class="row g-0 vh-100">
             <div class="col-lg-5 d-none d-lg-block">
                 <div class="side-banner h-100 text-white d-flex flex-column justify-content-between p-5"
@@ -227,9 +227,7 @@
                 </form>
             </div>
         </div>
-    </div> --}}
-    <h1>dddddddddddddd dddddddddddddddd</h1>
-
+    </div>
     <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
 </body>
 
