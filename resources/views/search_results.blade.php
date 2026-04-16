@@ -1,118 +1,250 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>نتائج البحث</title>
+
     <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}">
-</head>
-
-<body>
-    <div class="container py-5" dir="rtl">
-        <div class="row mb-4 align-items-center">
-            <div class="col-md-8 text-start text-md-end">
-                <h2 class="fw-bold text-danger">نتائج البحث المقترحة</h2>
-                <p class="text-muted text-center text-md-end">بناءً على بياناتك، إليك الأشخاص الأكثر توافقاً معك</p>
-            </div>
-            <div class="col-md-4 text-center text-md-start mt-3 mt-md-0">
-                <a href="{{ route('chat.inbox') }}" class="btn btn-danger rounded-pill px-4 me-2">صندوق الوارد</a>
-                <a href="{{ route('logout') }}" class="btn btn-outline-danger rounded-pill px-4">خروج</a>
-            </div>
-        </div>
-        <div class="row mb-3">
-            <div class="col-12">
-                <hr class="border-2 border-danger">
-            </div>
-        </div>
-
-        <div class="row g-4">
-            @forelse($results as $item)
-                <div class="col-lg-4 col-md-6">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden person-card">
-                        <div class="card-img-top bg-gradient p-4 text-center text-white"
-                            style="background: linear-gradient(45deg, #f8f9fa, #e9ecef);">
-                            <div class="avatar-placeholder mx-auto mb-2 rounded-circle shadow-sm d-flex align-items-center justify-content-center bg-white"
-                                style="width: 80px; height: 80px;">
-                                <i class="bi bi-person-fill text-secondary fs-1"></i>
-                            </div>
-                            <h5 class="mb-0 text-dark fw-bold">{{ $item->name }}</h5>
-                            <span class="badge bg-danger rounded-pill px-3 mt-2">{{ $item->city }}</span>
-                        </div>
-
-                        <div class="card-body text-end p-4">
-                            <div class="info-grid mb-3">
-                                <div class="d-flex justify-content-between mb-2 border-bottom pb-1">
-                                    <span class="text-muted small">العمر:</span>
-                                    <span class="fw-bold">{{ $item->age }} سنة</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2 border-bottom pb-1">
-                                    <span class="text-muted small">الطول/الوزن:</span>
-                                    <span class="fw-bold">{{ $item->height }} سم / {{ $item->weight }} كجم</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2 border-bottom pb-1">
-                                    <span class="text-muted small">الحالة الاجتماعية:</span>
-                                    <span class="fw-bold">{{ $item->status }}</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2 border-bottom pb-1">
-                                    <span class="text-muted small">الوظيفة:</span>
-                                    <span class="fw-bold text-truncate"
-                                        style="max-width: 150px;">{{ $item->job }}</span>
-                                </div>
-                            </div>
-
-                            <div class="d-grid mt-4">
-                                <a href="/chat/{{ $item->id }}"
-                                    class="btn btn-danger rounded-pill py-2 fw-bold shadow-sm">
-                                    <i class="bi bi-chat-heart-fill ms-2"></i> تواصل الآن
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @empty
-                <div class="col-12 text-center py-5">
-                    <div class="mb-3">
-                        <i class="bi bi-search fs-1 text-muted"></i>
-                    </div>
-                    <h4 class="text-muted">عذراً، لم نجد نتائج تطابق بحثك حالياً</h4>
-                    <a href="/" class="btn btn-outline-danger mt-3 rounded-pill px-4">العودة للرئيسية</a>
-                </div>
-            @endforelse
-        </div>
-    </div>
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body {
-            background-color: #fbfbfb;
-            font-family: 'Tajawal', sans-serif;
+        :root {
+            --primary: #d81b60;
+            --primary-dark: #ad1457;
+            --soft-bg: #fdf7f9;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
         }
 
+        body {
+            background: linear-gradient(180deg, #fff 0%, var(--soft-bg) 100%);
+            font-family: 'Tajawal', sans-serif;
+            color: var(--text);
+        }
+
+        /* HEADER */
+        .page-title {
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        /* CARD */
         .person-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: none;
+            border-radius: 22px;
+            overflow: hidden;
+            background: var(--card-bg);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            transition: 0.3s ease;
+            position: relative;
         }
 
         .person-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1) !important;
+            transform: translateY(-8px);
+            box-shadow: 0 20px 45px rgba(0,0,0,0.12);
         }
 
-        .bg-danger {
-            background-color: #D81B60 !important;
+        /* TOP AREA */
+        .card-header-custom {
+            background: linear-gradient(135deg, #fff0f5, #ffe4ec);
+            padding: 25px;
+            text-align: center;
+            position: relative;
         }
 
-        .btn-danger {
-            background-color: #D81B60;
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            font-weight: bold;
+            margin: auto;
+            box-shadow: 0 10px 25px rgba(216,27,96,0.25);
+        }
+
+        /* STATUS */
+        .status {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .online {
+            background: #e8fff1;
+            color: #16a34a;
+        }
+
+        .offline {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* INFO */
+        .info {
+            padding: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #eee;
+            font-size: 14px;
+        }
+
+        .info-row span:first-child {
+            color: var(--muted);
+        }
+
+        .info-row span:last-child {
+            font-weight: 600;
+        }
+
+        /* BUTTON */
+        .btn-love {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             border: none;
+            color: white;
+            padding: 12px;
+            border-radius: 999px;
+            font-weight: 700;
+            transition: 0.3s;
+            width: 100%;
         }
 
-        .btn-danger:hover {
-            background-color: #ad144a;
+        .btn-love:hover {
+            transform: scale(1.03);
+            box-shadow: 0 10px 25px rgba(216,27,96,0.3);
         }
+
+        /* TOP BAR */
+        .top-bar {
+            background: white;
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
     </style>
-    <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
-</body>
+</head>
 
+<body>
+
+<div class="container py-5">
+
+    <!-- HEADER -->
+    <div class="top-bar mb-4 d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2 class="page-title mb-1">نتائج البحث</h2>
+            <small class="text-muted">أشخاص مقترحين بناءً على التوافق</small>
+        </div>
+
+        <div class="mt-3 mt-md-0">
+            <a href="{{ route('chat.inbox') }}" class="btn btn-danger rounded-pill px-4">صندوق الوارد</a>
+            <a href="{{ route('logout') }}" class="btn btn-outline-danger rounded-pill px-4">خروج</a>
+        </div>
+    </div>
+
+    <!-- CARDS -->
+    <div class="row g-4">
+
+        @forelse($results as $item)
+
+        <div class="col-lg-4 col-md-6">
+
+            <div class="person-card">
+
+                <!-- HEADER -->
+                <div class="card-header-custom">
+
+                    <div class="avatar mb-3">
+                        {{ substr($item->name, 0, 1) }}
+                    </div>
+
+                    <h5 class="fw-bold mb-1 d-flex justify-content-center align-items-center gap-2">
+                        {{ $item->name }}
+
+                        <span class="status {{ $item->is_online ? 'online' : 'offline' }}">
+                            <span class="dot"></span>
+                            {{ $item->is_online ? 'متصل' : 'غير متصل' }}
+                        </span>
+                    </h5>
+
+                    <small class="text-muted d-block">
+                        {{ $item->is_online ? '' : $item->last_seen_text }}
+                    </small>
+
+                    <span class="badge bg-light text-dark mt-2 px-3 py-2 rounded-pill">
+                        {{ $item->city }}
+                    </span>
+
+                </div>
+
+                <!-- BODY -->
+                <div class="info">
+
+                    <div class="info-row">
+                        <span>العمر</span>
+                        <span>{{ $item->age }} سنة</span>
+                    </div>
+
+                    <div class="info-row">
+                        <span>الطول / الوزن</span>
+                        <span>{{ $item->height }} سم / {{ $item->weight }} كجم</span>
+                    </div>
+
+                    <div class="info-row">
+                        <span>الحالة</span>
+                        <span>{{ $item->status }}</span>
+                    </div>
+
+                    <div class="info-row">
+                        <span>الوظيفة</span>
+                        <span>{{ $item->job }}</span>
+                    </div>
+
+                    <div class="mt-3">
+                        <a href="/chat/{{ $item->id }}" class="btn-love">
+                            💌 تواصل الآن
+                        </a>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        @empty
+
+        <div class="col-12 text-center py-5">
+            <h4 class="text-muted">لا توجد نتائج</h4>
+        </div>
+
+        @endforelse
+
+    </div>
+
+</div>
+
+</body>
 </html>

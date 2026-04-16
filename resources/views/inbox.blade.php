@@ -105,6 +105,48 @@
         height: 100%;
         background: linear-gradient(var(--gold), var(--primary));
     }
+
+    /* Online Status Styles */
+    .online-indicator {
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+
+    .status-badge {
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .status-badge.online {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+    }
+
+    .status-badge.offline {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        box-shadow: 0 2px 6px rgba(108, 117, 125, 0.2);
+    }
+
+    .status-dot {
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .status-dot.online {
+        background: white;
+        box-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+    }
+
+    .status-dot.offline {
+        background: #adb5bd;
+    }
 </style>
 
 <div class="container mt-4" style="direction: rtl; text-align: right;">
@@ -124,7 +166,8 @@
     @forelse($conversations as $conv)
 
         @php
-            $otherUser = $conv->sender_id == $myId ? $conv->receiver : $conv->sender;
+            $otherUser = $conv->user_data ?? ($conv->sender_id == $myId ? $conv->receiver : $conv->sender);
+            $userStatus = $conv->user_status ?? ['status' => 'offline', 'text' => 'غير متصل', 'class' => 'text-gray-500'];
 
             $unreadCount = \App\Models\Message::where('sender_id', $otherUser->id)
                 ->where('receiver_id', $myId)
@@ -137,8 +180,12 @@
             <div class="d-flex justify-content-between align-items-center">
 
                 <div>
-                    <div class="name">
+                    <div class="name d-flex align-items-center gap-2">
                         💕 {{ $otherUser->name }}
+                        <span class="status-badge {{ $userStatus['status'] == 'online' ? 'online' : 'offline' }} d-flex align-items-center gap-1 {{ $userStatus['status'] == 'online' ? 'online-indicator' : '' }}" style="font-size: 9px; padding: 2px 6px;">
+                            <span class="status-dot {{ $userStatus['status'] == 'online' ? 'online' : 'offline' }}" style="width: 4px; height: 4px;"></span>
+                            {{ $userStatus['status'] == 'online' ? 'متصل' : 'غير متصل' }}
+                        </span>
                     </div>
 
                     <div class="last-msg">
@@ -147,6 +194,9 @@
                         @endif
 
                         {{ Str::limit($conv->body, 60) }}
+                        <div class="text-muted" style="font-size: 11px; margin-top: 2px;">
+                            {{ $userStatus['text'] }}
+                        </div>
                     </div>
                 </div>
 

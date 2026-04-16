@@ -155,6 +155,50 @@
             transform: scale(1.1);
             box-shadow: 0 0 15px #D81B60;
         }
+
+        /* Online Status Animations */
+        .online-indicator {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .status-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .status-badge.online {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .status-badge.offline {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            box-shadow: 0 2px 8px rgba(108, 117, 125, 0.2);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.online {
+            background: white;
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+        }
+
+        .status-dot.offline {
+            background: #adb5bd;
+        }
     </style>
 </head>
 
@@ -171,11 +215,15 @@
                 </div>
 
                 <div>
-                    <h5 class="mb-0">
+                    <h5 class="mb-0 d-flex align-items-center gap-2">
                         التواصل مع {{ $receiver->name }}
+                        <span class="status-badge {{ $receiverStatus['status'] == 'online' ? 'online' : 'offline' }} d-flex align-items-center gap-1 {{ $receiverStatus['status'] == 'online' ? 'online-indicator' : '' }}">
+                            <span class="status-dot {{ $receiverStatus['status'] == 'online' ? 'online' : 'offline' }}"></span>
+                            {{ $receiverStatus['status'] == 'online' ? 'متصل' : 'غير متصل' }}
+                        </span>
                     </h5>
                     <small class="text-white-50">
-                        أنت: {{ $currentUser->name }} · معرفك: {{ $currentUser->id }} · المحادثة مع:
+                        {{ $receiverStatus['last_seen_arabic'] }} · أنت: {{ $currentUser->name }} · معرفك: {{ $currentUser->id }} · المحادثة مع:
                         {{ $receiver->name }} (ID {{ $receiver->id }})
                     </small>
                 </div>
@@ -240,28 +288,39 @@
             canReply: canReply
         });
 
-        axios.defaults.headers.common['X-CSRF-TOKEN'] =
-            document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        // استدعاء الدوال عند تحميل الصفحة
+        window.addEventListener('load', function() {
+            loadMessages();
+            updateOnlineStatus();
+        });
 
-        window.addEventListener('load', loadMessages);
+        // تحديث الرسائل كل 4 ثواني
         setInterval(loadMessages, 4000);
 
-        @if ($canReply)
-            document.getElementById('send-btn').addEventListener('click', sendMessage);
+        // تحديث حالة الاتصال كل 30 ثانية
+        setInterval(updateOnlineStatus, 30000);
 
-            document.getElementById('message-input').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') sendMessage();
-            });
-        @endif
+        // ربط زر الإرسال بالدالة
+        document.getElementById('send-btn').addEventListener('click', sendMessage);
+
+        // إرسال عند الضغط على Enter
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
 
         function loadMessages() {
+            console.log('Loading messages from:', "{{ route('chat.messages', ['receiverId' => $receiver->id]) }}");
             axios.get("{{ route('chat.messages', ['receiverId' => $receiver->id]) }}")
                 .then(res => {
-                    console.log('Loaded messages', res.data);
+                    console.log('Loaded messages successfully:', res.data);
+                    console.log('Messages count:', res.data.messages ? res.data.messages.length : 0);
                     renderMessages(res.data.messages);
                 })
                 .catch(error => {
-                    console.error('Failed to load messages', error);
+                    console.error('Failed to load messages:', error);
+                    console.error('Error response:', error.response);
                     if (error.response && error.response.status === 401) {
                         alert('لم يتم تسجيل الدخول أو انتهت الجلسة. الرجاء تسجيل الدخول مرة أخرى.');
                     }
@@ -349,6 +408,30 @@
 
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function updateOnlineStatus() {
+            axios.get('/api/user-status/' + receiverId)
+                .then(res => {
+                    const status = res.data;
+                    const statusBadge = document.querySelector('.chat-header .status-badge');
+                    const statusText = document.querySelector('.chat-header small');
+                    
+                    if (statusBadge) {
+                        statusBadge.className = `status-badge ${status.status === 'online' ? 'online' : 'offline'} d-flex align-items-center gap-1 ${status.status === 'online' ? 'online-indicator' : ''}`;
+                        statusBadge.innerHTML = `
+                            <span class="status-dot ${status.status === 'online' ? 'online' : 'offline'}"></span>
+                            ${status.status === 'online' ? 'متصل' : 'غير متصل'}
+                        `;
+                    }
+                    
+                    if (statusText) {
+                        statusText.textContent = status.last_seen_arabic + ' · أنت: ' + receiverName + ' · معرفك: ' + myId + ' · المحادثة مع: ' + receiverName + ' (ID ' + receiverId + ')';
+                    }
+                })
+                .catch(error => {
+                    console.error('Failed to update status', error);
+                });
         }
     </script>
 

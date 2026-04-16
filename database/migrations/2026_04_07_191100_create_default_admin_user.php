@@ -22,7 +22,7 @@ return new class extends Migration
             DB::table('dataforusers')->insert([
                 'name' => 'Admin',
                 'email' => 'admin@example.com',
-                'password' => Hash::make('admin123'),
+                'password' => Hash::make('Admin@2024!Secure#Pass'),
                 'gender' => 'male',
                 'age' => 30,
                 'country' => 'Egypt',

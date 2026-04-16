@@ -9,9 +9,18 @@ class CheckUserSession
 {
     public function handle(Request $request, Closure $next)
     {
-        // لو مفيش user_id في السيشن، ارجعه لصفحة التسجيل أو الهوم
+        // Luo mfiush user_id fi alsiyon, argh'uh li safat altasjil
         if (!session()->has('user_id')) {
-            return redirect()->route('home')->with('error', 'يجب تسجيل الدخول أولاً');
+            return redirect()->route('user.login')->with('error', 'Yajib tasjil aldokhol awalan');
+        }
+
+        // Verify user exists in database
+        $userId = session('user_id');
+        $user = \App\Models\Dataforuser::find($userId);
+        
+        if (!$user) {
+            session()->forget('user_id');
+            return redirect()->route('user.login')->with('error', 'User not found');
         }
 
         return $next($request);

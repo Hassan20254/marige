@@ -115,63 +115,17 @@
             font-size: 12px;
         }
 
-        .google-btn {
-            background: white;
-            color: #333;
-            border: 1px solid #ddd;
-            font-weight: 600;
-            border-radius: 10px;
-            padding: 12px;
-            transition: .3s;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .google-btn:hover {
-            background: #f9f9f9;
-            border-color: #D81B60;
-            box-shadow: 0 5px 15px rgba(216, 27, 96, 0.15);
-        }
-
-        .google-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            background: #f0f0f0;
-        }
-
-        .google-btn:disabled:hover {
-            background: #f0f0f0;
-            border-color: #ddd;
-            box-shadow: none;
-        }
-
-        .google-icon {
-            width: 20px;
-            height: 20px;
-        }
-
-        .info-box {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            color: #856404;
-            text-align: right;
-        }
-
-        .info-box strong {
-            display: block;
-            margin-bottom: 5px;
-        }
+        
     </style>
 
     <div class="login-wrapper" dir="rtl">
+
+        <div class="notification-toggle">
+            <button class="btn btn-sm btn-outline-primary" onclick="showNotificationArea()">
+                <i class="bi bi-bell"></i>
+                <span class="badge bg-danger" id="notification-count" style="display: none;">0</span>
+            </button>
+        </div>
 
         <div class="login-card text-center">
 
@@ -215,7 +169,101 @@
                 هل أنت مسؤول؟ <a href="{{ route('admin.login') }}">تسجيل دخول مسؤول</a>
             </div>
 
+            
+
         </div>
 
     </div>
 @endsection
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+// Notification functions
+function showNotificationArea() {
+    document.getElementById('notification-area').style.display = 'block';
+}
+
+function hideNotificationArea() {
+    document.getElementById('notification-area').style.display = 'none';
+}
+
+function renderNotifications(notifications) {
+    let notificationList = document.getElementById('notification-list');
+    notificationList.innerHTML = '';
+    
+    if (notifications.length === 0) {
+        notificationList.innerHTML = '<div class="text-muted p-3 text-center">لا توجد إشعارات</div>';
+        return;
+    }
+    
+    notifications.forEach(notification => {
+        let notificationItem = document.createElement('div');
+        notificationItem.className = `notification-item ${notification.is_read ? '' : 'unread'}`;
+        notificationItem.onclick = () => markAsRead(notification.message_id);
+        
+        notificationItem.innerHTML = `
+            <div class="notification-content">
+                <div>
+                    <strong>${notification.sender_id == '{{ session('user_id') }}' ? 'أنت' : 'مستخدم آخر'}</strong>
+                    <div class="notification-time">${notification.created_at}</div>
+                </div>
+                <div>${notification.message_preview}</div>
+            </div>
+            ${!notification.is_read ? '<div class="notification-badge">جديد</div>' : ''}
+        `;
+        
+        notificationList.appendChild(notificationItem);
+    });
+}
+
+function updateNotificationCount(notifications) {
+    const unreadCount = notifications.filter(n => !n.is_read).length;
+    const badge = document.getElementById('notification-count');
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function markAsRead(notificationId) {
+    axios.post('/mark-notification-read', {
+        notification_id: notificationId
+    }).then(() => {
+        // Remove unread styling
+        let notificationItems = document.querySelectorAll('.notification-item');
+        notificationItems.forEach(item => {
+            if (item.innerHTML.includes(notificationId)) {
+                item.classList.remove('unread');
+            }
+        });
+    }).catch(error => {
+        console.error('Failed to mark notification as read', error);
+    });
+}
+
+function clearNotifications() {
+    axios.post('/clear-notifications')
+        .then(() => {
+            document.getElementById('notification-list').innerHTML = '<div class="text-muted p-3 text-center">تم مسح جميع الإشعارات</div>';
+        })
+        .catch(error => {
+            console.error('Failed to clear notifications', error);
+        });
+}
+
+// Load notifications on page load
+window.addEventListener('load', function() {
+    // Load notifications from server
+    axios.get('/get-notifications')
+        .then(response => {
+            renderNotifications(response.data.notifications || []);
+            updateNotificationCount(response.data.notifications || []);
+        })
+        .catch(error => {
+            console.error('Failed to load notifications', error);
+        });
+});
+</script>

@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Message; // تأكد أن هذا المسار صحيح
 use App\Models\Dataforuser; // تأكد أن هذا المسار صحيح
 use App\Events\MessageSent;
+use App\Helpers\UserStatusHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Auth;
 
 class ChatController extends Controller
 {
@@ -57,6 +60,12 @@ class ChatController extends Controller
         })->orderBy('created_at', 'asc')->get();
 
         $currentUser = Dataforuser::find($myId);
+        
+        // Check if current user exists
+        if (!$currentUser) {
+            return redirect('/')->with('error', 'المستخدم غير موجود');
+        }
+        
         $firstMessage = Message::where(function ($q) use ($myId, $receiverId) {
             $q->where('sender_id', $myId)->where('receiver_id', $receiverId);
         })->orWhere(function ($q) use ($myId, $receiverId) {
@@ -68,7 +77,10 @@ class ChatController extends Controller
             $canReply = false;
         }
 
-        return view('chat', compact('receiver', 'messages', 'canReply', 'currentUser'));
+        // Prepare receiver status using UserStatusHelper
+        $receiverStatus = UserStatusHelper::getUserStatus($receiver->last_seen);
+
+        return view('chat', compact('receiver', 'messages', 'canReply', 'currentUser', 'receiverStatus'));
     }
 
     // إرسال رسالة
@@ -98,12 +110,29 @@ class ChatController extends Controller
             return response()->json(['error' => 'يجب أن تكون مشتركًا للرد على الرسائل'], 403);
         }
 
+        // Encrypt message if user is not subscribed
+        $isEncrypted = !$sender->is_subscribed && !$sender->is_admin;
+        $messageBody = $request->message;
+        
+        if ($isEncrypted) {
+            $messageBody = Crypt::encryptString($messageBody);
+        }
+
         $message = Message::create([
             'sender_id'   => $myId,
             'receiver_id' => $receiverId,
-            'body'        => $request->message,
-            'is_read'     => false
+            'body'        => $messageBody,
+            'is_read'     => false,
+            'is_encrypted' => $isEncrypted
         ]);
+
+        // Create notification for receiver
+        NotificationController::createNotification(
+            $message->id,
+            $myId,
+            $receiverId,
+            substr($request->message, 0, 50) . (strlen($request->message) > 50 ? '...' : '')
+        );
 
         try {
             broadcast(new MessageSent($message))->toOthers();
@@ -117,18 +146,60 @@ class ChatController extends Controller
     public function fetchMessages($receiverId)
     {
         $myId = session('user_id');
+        
+        // Force fresh data from database - bypass all cache
+        $messages = Message::with(['sender', 'receiver'])
+            ->where(function ($query) use ($myId, $receiverId) {
+                $query->where('sender_id', $myId)->where('receiver_id', $receiverId);
+            })->orWhere(function ($query) use ($myId, $receiverId) {
+                $query->where('sender_id', $receiverId)->where('receiver_id', $myId);
+            })->orderBy('created_at', 'asc')->get();
 
-        if (!$myId) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
+        // Add can_read property to each message and handle encryption
+        $messages->each(function ($message) use ($myId) {
+            $currentUser = \App\Models\Dataforuser::find($myId);
+            $canRead = false;
+            
+            // Check if user can read this message
+            if ($message->sender_id == $myId) {
+                // User can always read their own messages
+                $canRead = true;
+                // Decrypt if it's their own encrypted message
+                if ($message->is_encrypted) {
+                    try {
+                        $message->body = Crypt::decryptString($message->body);
+                        $message->is_encrypted = false;
+                    } catch (\Exception $e) {
+                        $message->body = '[Error decrypting message]';
+                    }
+                }
+            } else {
+                // User can read received messages only if subscribed or admin
+                $canRead = $currentUser && ($currentUser->is_subscribed || $currentUser->is_admin);
+                
+                // If user can read and message is encrypted, decrypt it
+                if ($canRead && $message->is_encrypted) {
+                    try {
+                        $message->body = Crypt::decryptString($message->body);
+                        $message->is_encrypted = false;
+                    } catch (\Exception $e) {
+                        $message->body = '[Error decrypting message]';
+                    }
+                }
+            }
+            
+            $message->can_read = $canRead;
+            
+            // If user can't read, show placeholder
+            if (!$canRead) {
+                $message->body = 'تواصل مع الادمن لفك التشفير و اكمال المحادثه 962782941878';
+            }
+        });
 
-        $messages = Message::with('sender')->where(function ($q) use ($myId, $receiverId) {
-            $q->where('sender_id', $myId)->where('receiver_id', $receiverId);
-        })->orWhere(function ($q) use ($myId, $receiverId) {
-            $q->where('sender_id', $receiverId)->where('receiver_id', $myId);
-        })->orderBy('created_at', 'asc')->get();
-
-        return response()->json(['messages' => $messages]);
+        return response()->json([
+            'messages' => $messages,
+            'notifications' => Message::getUnreadNotifications(session('user_id'))
+        ]);
     }
 
     // ============ تسجيل دخول المستخدم العادي ============
@@ -143,13 +214,24 @@ class ChatController extends Controller
 
         // التأكد من وجود المستخدم والتحقق من كلمة المرور بشكل آمن
         if ($user && Hash::check($request->password, $user->password)) {
-            // تتحقق إنه مو مسؤول
+            // التأكد إنه مو مسؤول
             if ($user->is_admin) {
                 return back()->with('error', '❌ هذا الحساب مخصص للمسؤولين فقط. استخدم صفحة تسجيل دخول المسؤول.');
             }
 
-            session(['user_id' => $user->id]); // هنا "تذكرة الدخول" اتحطت في السيشن
-            session()->regenerate(); // تجديد السيشن عشان الأمان
+            // Use Laravel Auth system
+            Auth::login($user);
+            
+            // Also set session as backup
+            session(['user_id' => $user->id]);
+            session()->regenerate();
+
+            // Check if there's a target user from guest search
+            $targetUserId = session('target_user_id');
+            if ($targetUserId) {
+                session()->forget('target_user_id');
+                return redirect()->route('chat.index', $targetUserId)->with('success', '✅ تم تسجيل الدخول بنجاح!');
+            }
 
             return redirect()->route('chat.inbox')->with('success', '✅ تم تسجيل الدخول بنجاح!');
         }
@@ -189,5 +271,23 @@ class ChatController extends Controller
         session()->forget('user_id'); // مسح التذكرة عند الخروج
         session()->regenerate(); // تجديد السيشن
         return redirect('/')->with('success', '👋 تم تسجيل الخروج بنجاح');
+    }
+
+    // ============ Get User Status ============
+    public function getUserStatus($userId)
+    {
+        $user = Dataforuser::find($userId);
+        
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+        
+        return response()->json([
+            'status' => $user->isOnline() ? 'online' : 'offline',
+            'last_seen' => $user->last_seen,
+            'last_seen_arabic' => $user->last_seen_text,
+            'user_id' => $user->id,
+            'name' => $user->name
+        ]);
     }
 }

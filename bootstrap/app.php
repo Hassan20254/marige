@@ -15,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'check.session' => \App\Http\Middleware\CheckUserSession::class,
             'check.admin' => \App\Http\Middleware\CheckAdminSession::class,
+            'update.last_seen' => \App\Http\Middleware\UpdateLastSeen::class,
+            'store.target_user' => \App\Http\Middleware\StoreTargetUser::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'login',
